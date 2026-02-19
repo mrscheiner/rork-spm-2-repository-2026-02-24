@@ -422,11 +422,180 @@ const ALL_PASSES_BACKUP_KEY = 'all_passes_backup_v1';
 
 
 const INITIAL_BACKUP_DATA = {
-  salesData: {} as Record<string, Record<string, any>>,
+  salesData: {
+    "p1": {
+      "pair1": {"gameId":"p1","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":33.77,"paymentStatus":"paid","soldDate":"2025-10-15T02:12:54.008Z"},
+      "pair2": {"gameId":"p1","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":18.2,"paymentStatus":"paid","soldDate":"2025-10-15T02:12:56.909Z"},
+      "pair3": {"gameId":"p1","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":16.61,"paymentStatus":"paid","soldDate":"2025-10-15T02:15:40.189Z"}
+    },
+    "p2": {
+      "pair1": {"gameId":"p2","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":37.48,"paymentStatus":"paid","soldDate":"2025-10-15T02:13:07.248Z"},
+      "pair2": {"gameId":"p2","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":14.31,"paymentStatus":"paid","soldDate":"2025-10-15T02:13:10.899Z"},
+      "pair3": {"gameId":"p2","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":21.6,"paymentStatus":"paid","soldDate":"2025-10-15T02:15:46.615Z"}
+    },
+    "1": {
+      "pair1": {"gameId":"1","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":234,"paymentStatus":"paid","soldDate":"2025-10-15T02:13:21.793Z"},
+      "pair2": {"gameId":"1","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":124.2,"paymentStatus":"paid","soldDate":"2025-10-15T02:13:27.544Z"},
+      "pair3": {"gameId":"1","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":138.6,"paymentStatus":"paid","soldDate":"2025-10-15T02:15:55.784Z"}
+    },
+    "2": {
+      "pair1": {"gameId":"2","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":59.17,"paymentStatus":"paid","soldDate":"2025-10-15T02:13:34.487Z"},
+      "pair2": {"gameId":"2","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":23.4,"paymentStatus":"paid","soldDate":"2025-10-15T02:13:38.571Z"},
+      "pair3": {"gameId":"2","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":27.2,"paymentStatus":"paid","soldDate":"2025-10-15T02:16:08.870Z"}
+    },
+    "3": {
+      "pair1": {"gameId":"3","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":128,"paymentStatus":"paid","soldDate":"2025-10-29T15:51:27.650Z"},
+      "pair2": {"gameId":"3","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":45.76,"paymentStatus":"paid","soldDate":"2025-10-15T02:13:52.048Z"},
+      "pair3": {"gameId":"3","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":54,"paymentStatus":"paid","soldDate":"2025-10-15T02:16:18.821Z"}
+    },
+    "4": {
+      "pair1": {"gameId":"4","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":103.57,"paymentStatus":"paid","soldDate":"2025-10-29T15:50:29.530Z"},
+      "pair2": {"gameId":"4","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":36.5,"paymentStatus":"paid","soldDate":"2025-10-29T15:50:24.596Z"},
+      "pair3": {"gameId":"4","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":41.54,"paymentStatus":"paid","soldDate":"2025-10-29T15:47:30.524Z"}
+    },
+    "5": {
+      "pair1": {"gameId":"5","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":153,"paymentStatus":"paid","soldDate":"2025-10-29T15:50:46.000Z"},
+      "pair2": {"gameId":"5","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":52.2,"paymentStatus":"paid","soldDate":"2025-10-29T15:50:48.484Z"},
+      "pair3": {"gameId":"5","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":72,"paymentStatus":"paid","soldDate":"2025-10-29T15:48:14.370Z"}
+    },
+    "6": {
+      "pair1": {"gameId":"6","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":37.8,"paymentStatus":"paid","soldDate":"2025-11-05T18:19:48.742Z"},
+      "pair2": {"gameId":"6","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":27,"paymentStatus":"paid","soldDate":"2025-11-05T18:19:49.976Z"},
+      "pair3": {"gameId":"6","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":39.22,"paymentStatus":"paid","soldDate":"2025-11-05T18:19:58.077Z"}
+    },
+    "7": {
+      "pair1": {"gameId":"7","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":118.8,"paymentStatus":"paid","soldDate":"2025-11-05T18:20:22.685Z"},
+      "pair2": {"gameId":"7","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":36,"paymentStatus":"paid","soldDate":"2025-11-05T18:20:24.061Z"},
+      "pair3": {"gameId":"7","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":54,"paymentStatus":"paid","soldDate":"2025-11-05T18:20:25.462Z"}
+    },
+    "8": {
+      "pair1": {"gameId":"8","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":83.65,"paymentStatus":"paid","soldDate":"2025-11-19T20:24:52.442Z"},
+      "pair2": {"gameId":"8","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":25.83,"paymentStatus":"paid","soldDate":"2025-11-19T20:24:56.259Z"},
+      "pair3": {"gameId":"8","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":30.6,"paymentStatus":"paid","soldDate":"2025-11-19T20:20:32.314Z"}
+    },
+    "9": {
+      "pair1": {"gameId":"9","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":197.66,"paymentStatus":"paid","soldDate":"2025-11-19T20:24:36.476Z"},
+      "pair2": {"gameId":"9","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":107.32,"paymentStatus":"paid","soldDate":"2025-11-19T20:24:42.277Z"},
+      "pair3": {"gameId":"9","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":71.01,"paymentStatus":"paid","soldDate":"2025-11-19T20:20:41.857Z"}
+    },
+    "10": {
+      "pair1": {"gameId":"10","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":59.4,"paymentStatus":"paid","soldDate":"2026-01-16T16:20:12.299Z"},
+      "pair2": {"gameId":"10","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":19.96,"paymentStatus":"paid","soldDate":"2026-01-16T16:20:32.374Z"},
+      "pair3": {"gameId":"10","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":21.87,"paymentStatus":"paid","soldDate":"2026-01-16T16:32:01.650Z"}
+    },
+    "11": {
+      "pair1": {"gameId":"11","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":48.94,"paymentStatus":"paid","soldDate":"2026-01-16T16:21:19.116Z"},
+      "pair2": {"gameId":"11","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":26.69,"paymentStatus":"paid","soldDate":"2026-01-16T16:21:31.514Z"},
+      "pair3": {"gameId":"11","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":13.5,"paymentStatus":"paid","soldDate":"2026-01-16T16:32:13.806Z"}
+    },
+    "12": {
+      "pair1": {"gameId":"12","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":162,"paymentStatus":"paid","soldDate":"2026-01-16T16:22:32.038Z"},
+      "pair2": {"gameId":"12","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":74.61,"paymentStatus":"paid","soldDate":"2026-01-16T16:22:48.912Z"},
+      "pair3": {"gameId":"12","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":108.27,"paymentStatus":"paid","soldDate":"2026-01-16T16:32:37.861Z"}
+    },
+    "13": {
+      "pair1": {"gameId":"13","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":113.58,"paymentStatus":"paid","soldDate":"2026-01-16T16:24:06.664Z"},
+      "pair2": {"gameId":"13","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":35.28,"paymentStatus":"paid","soldDate":"2026-01-16T16:24:07.365Z"},
+      "pair3": {"gameId":"13","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":37.98,"paymentStatus":"paid","soldDate":"2026-01-16T16:32:51.942Z"}
+    },
+    "14": {
+      "pair1": {"gameId":"14","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":138.6,"paymentStatus":"paid","soldDate":"2026-01-16T16:24:44.905Z"},
+      "pair2": {"gameId":"14","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":48.6,"paymentStatus":"paid","soldDate":"2026-01-16T16:24:59.725Z"},
+      "pair3": {"gameId":"14","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":47.77,"paymentStatus":"paid","soldDate":"2026-01-16T16:33:10.588Z"}
+    },
+    "15": {
+      "pair1": {"gameId":"15","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":127.35,"paymentStatus":"paid","soldDate":"2026-01-16T16:25:20.516Z"},
+      "pair2": {"gameId":"15","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":54,"paymentStatus":"paid","soldDate":"2026-01-16T16:25:43.987Z"},
+      "pair3": {"gameId":"15","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":41.4,"paymentStatus":"paid","soldDate":"2026-01-16T16:33:25.211Z"}
+    },
+    "16": {
+      "pair1": {"gameId":"16","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":55.8,"paymentStatus":"paid","soldDate":"2026-01-16T16:26:00.315Z"},
+      "pair2": {"gameId":"16","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":32.13,"paymentStatus":"paid","soldDate":"2026-01-16T16:26:09.659Z"},
+      "pair3": {"gameId":"16","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":29.99,"paymentStatus":"paid","soldDate":"2026-01-16T16:33:38.805Z"}
+    },
+    "17": {
+      "pair1": {"gameId":"17","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":72.09,"paymentStatus":"paid","soldDate":"2026-01-16T16:26:48.587Z"},
+      "pair2": {"gameId":"17","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":16.18,"paymentStatus":"paid","soldDate":"2026-01-16T16:39:56.584Z"},
+      "pair3": {"gameId":"17","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":12.6,"paymentStatus":"paid","soldDate":"2026-01-16T16:33:57.967Z"}
+    },
+    "18": {
+      "pair1": {"gameId":"18","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":86.94,"paymentStatus":"paid","soldDate":"2026-01-16T16:27:17.967Z"},
+      "pair2": {"gameId":"18","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":27.67,"paymentStatus":"paid","soldDate":"2026-01-16T16:27:26.752Z"},
+      "pair3": {"gameId":"18","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":43.2,"paymentStatus":"paid","soldDate":"2026-01-16T16:34:15.416Z"}
+    },
+    "19": {
+      "pair1": {"gameId":"19","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":1,"paymentStatus":"paid","soldDate":"2026-01-16T00:00:00.000Z"},
+      "pair2": {"gameId":"19","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":28.62,"paymentStatus":"paid","soldDate":"2026-01-16T16:28:07.418Z"},
+      "pair3": {"gameId":"19","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":45,"paymentStatus":"paid","soldDate":"2026-01-16T16:35:13.477Z"}
+    },
+    "20": {
+      "pair1": {"gameId":"20","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":1,"paymentStatus":"paid","soldDate":"2026-01-16T00:00:00.000Z"},
+      "pair2": {"gameId":"20","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":31.39,"paymentStatus":"paid","soldDate":"2026-01-16T16:28:38.524Z"},
+      "pair3": {"gameId":"20","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":34.2,"paymentStatus":"paid","soldDate":"2026-01-16T16:35:29.409Z"}
+    },
+    "21": {
+      "pair1": {"gameId":"21","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":75.6,"paymentStatus":"paid","soldDate":"2026-01-16T16:28:26.372Z"},
+      "pair2": {"gameId":"21","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":54.41,"paymentStatus":"paid","soldDate":"2026-01-16T16:29:05.538Z"},
+      "pair3": {"gameId":"21","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":68.4,"paymentStatus":"paid","soldDate":"2026-01-16T16:35:42.116Z"}
+    },
+    "22": {
+      "pair1": {"gameId":"22","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":144.18,"paymentStatus":"paid","soldDate":"2026-01-16T16:28:54.302Z"},
+      "pair2": {"gameId":"22","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":301.72,"paymentStatus":"paid","soldDate":"2026-01-16T16:29:34.251Z"},
+      "pair3": {"gameId":"22","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":145.8,"paymentStatus":"paid","soldDate":"2026-01-16T16:36:08.116Z"}
+    },
+    "23": {
+      "pair1": {"gameId":"23","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":232.96,"paymentStatus":"paid","soldDate":"2026-02-05T16:07:56.744Z"},
+      "pair2": {"gameId":"23","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":121.05,"paymentStatus":"paid","soldDate":"2026-02-05T16:07:56.893Z"},
+      "pair3": {"gameId":"23","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":108,"paymentStatus":"paid","soldDate":"2026-02-05T16:07:56.965Z"}
+    },
+    "24": {
+      "pair1": {"gameId":"24","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":298.26,"paymentStatus":"paid","soldDate":"2026-02-05T16:02:49.784Z"},
+      "pair2": {"gameId":"24","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":154.03,"paymentStatus":"paid","soldDate":"2026-02-05T16:02:50.004Z"},
+      "pair3": {"gameId":"24","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":144.13,"paymentStatus":"paid","soldDate":"2026-02-05T16:02:50.105Z"}
+    },
+    "25": {
+      "pair1": {"gameId":"25","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":200.25,"paymentStatus":"paid","soldDate":"2026-02-04T02:51:30.837Z"},
+      "pair2": {"gameId":"25","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":92.39,"paymentStatus":"paid","soldDate":"2026-02-04T02:51:31.053Z"},
+      "pair3": {"gameId":"25","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":81.81,"paymentStatus":"paid","soldDate":"2026-02-04T02:51:31.223Z"}
+    },
+    "26": {
+      "pair1": {"gameId":"26","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":98,"paymentStatus":"paid","soldDate":"2026-02-04T02:55:12.294Z"},
+      "pair2": {"gameId":"26","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":33.73,"paymentStatus":"pending","soldDate":"2026-02-04T02:55:12.511Z"},
+      "pair3": {"gameId":"26","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":36.9,"paymentStatus":"pending","soldDate":"2026-02-04T02:55:12.685Z"}
+    },
+    "27": {
+      "pair1": {"gameId":"27","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":99,"paymentStatus":"pending","soldDate":"2026-02-05T15:51:09.640Z"},
+      "pair2": {"gameId":"27","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":99,"paymentStatus":"pending","soldDate":"2026-02-05T15:51:09.808Z"},
+      "pair3": {"gameId":"27","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":66.28,"paymentStatus":"pending","soldDate":"2026-02-05T15:56:26.788Z"}
+    },
+    "28": {
+      "pair1": {"gameId":"28","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":34.9,"paymentStatus":"pending","soldDate":"2026-02-05T15:58:56.208Z"},
+      "pair2": {"gameId":"28","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":120.6,"paymentStatus":"paid","soldDate":"2026-02-05T15:58:56.350Z"},
+      "pair3": {"gameId":"28","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":128.25,"paymentStatus":"paid","soldDate":"2026-02-05T15:58:56.499Z"}
+    },
+    "29": {
+      "pair1": {"gameId":"29","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":130.36,"paymentStatus":"paid","soldDate":"2026-02-05T15:58:18.295Z"},
+      "pair2": {"gameId":"29","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":29.7,"paymentStatus":"paid","soldDate":"2026-02-05T15:58:18.450Z"},
+      "pair3": {"gameId":"29","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":36,"paymentStatus":"paid","soldDate":"2026-02-05T15:58:18.523Z"}
+    },
+    "30": {
+      "pair1": {"gameId":"30","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":403.2,"paymentStatus":"pending","soldDate":"2026-02-04T03:10:43.118Z"},
+      "pair2": {"gameId":"30","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":97.85,"paymentStatus":"pending","soldDate":"2026-02-05T16:13:38.595Z"},
+      "pair3": {"gameId":"30","pairId":"pair3","section":"325","row":"5","seats":"6-7","price":108.52,"paymentStatus":"pending","soldDate":"2026-02-05T16:13:38.693Z"}
+    },
+    "31": {
+      "pair1": {"gameId":"31","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":208.37,"paymentStatus":"pending","soldDate":"2026-02-05T21:06:08.584Z"},
+      "pair2": {"gameId":"31","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":90,"paymentStatus":"pending","soldDate":"2026-02-05T21:06:08.697Z"}
+    },
+    "32": {
+      "pair1": {"gameId":"32","pairId":"pair1","section":"129","row":"26","seats":"24-25","price":166.09,"paymentStatus":"pending","soldDate":"2026-02-05T03:55:57.304Z"},
+      "pair2": {"gameId":"32","pairId":"pair2","section":"308","row":"8","seats":"1-2","price":72.41,"paymentStatus":"pending","soldDate":"2026-02-04T03:12:42.867Z"}
+    }
+  } as Record<string, Record<string, any>>,
   seatPairs: [
-    { id: "pair1", section: "129", row: "26", seats: "24-25", seasonCost: 6651.12 },
-    { id: "pair2", section: "308", row: "8", seats: "1-2", seasonCost: 3505.32 },
-    { id: "pair3", section: "325", row: "5", seats: "6-7", seasonCost: 3505.32 }
+    { id: "pair1", section: "129", row: "26", seats: "24-25", seasonCost: 3326.06 },
+    { id: "pair2", section: "308", row: "8", seats: "1-2", seasonCost: 1752.16 },
+    { id: "pair3", section: "325", row: "5", seats: "6-7", seasonCost: 1752.16 }
   ]
 };
 
@@ -877,8 +1046,8 @@ function buildSalesDataFromTicketSaleSeedRows(
   return salesData;
 }
 
-function buildCanonicalPanthersSalesData(games: Game[], seatPairs: SeatPair[]): Record<string, Record<string, SaleRecord>> {
-  return buildSalesDataFromTicketSaleSeedRows(PANTHERS_TICKET_SALES_SEED, games, seatPairs);
+function buildCanonicalPanthersSalesData(_games: Game[], _seatPairs: SeatPair[]): Record<string, Record<string, SaleRecord>> {
+  return transformSalesData(INITIAL_BACKUP_DATA.salesData);
 }
 
 function parseTicketSaleSeedText(raw: string): TicketSaleSeedRow[] {
