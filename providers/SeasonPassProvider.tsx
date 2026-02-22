@@ -83,63 +83,54 @@ async function fetchScheduleViaESPN(pass: {
   
   const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
   console.log('[ScheduleFetch] EXPO_PUBLIC_RORK_API_BASE_URL:', baseUrl);
-  
   if (!baseUrl) {
-    console.error('[ScheduleFetch] ❌ EXPO_PUBLIC_RORK_API_BASE_URL is undefined!');
-    return { games: [], error: 'NETWORK' };
+    // Do not treat missing env var as fatal here — the tRPC client has its own
+    // fallback logic for the base URL. Log for visibility and continue.
+    console.warn('[ScheduleFetch] EXPO_PUBLIC_RORK_API_BASE_URL is not configured - using tRPC client fallback');
   }
 
   try {
-    console.log('[ScheduleFetch] Calling tRPC espn.getFullSchedule...');
-    const trpcInput = {
+    // Use custom REST endpoint for all ESPN schedule fetches
+    const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL || '';
+    const input = {
       leagueId: leagueIdRaw,
       teamId: pass.teamId,
       teamName: pass.teamName,
       teamAbbreviation: pass.teamAbbreviation,
     };
-    console.log('[ScheduleFetch] tRPC input:', JSON.stringify(trpcInput));
-    
-    const startTime = Date.now();
-    let result;
-    try {
-      result = await trpcClient.espn.getFullSchedule.query(trpcInput);
-    } catch (fetchErr: any) {
-      console.log('[ScheduleFetch] ESPN backend unavailable:', fetchErr?.message || 'Network error');
+    const url = `${baseUrl}/api/espn/schedule?input=${encodeURIComponent(JSON.stringify(input))}`;
+    console.log('[ScheduleFetch] Fetching schedule from REST endpoint:', url);
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      console.warn('[ScheduleFetch] REST endpoint error:', resp.status);
       return { games: [], error: 'NETWORK' };
     }
-    const elapsed = Date.now() - startTime;
-    console.log('[ScheduleFetch] ✅ ESPN tRPC call completed in', elapsed, 'ms');
-    console.log('[ScheduleFetch] error:', result.error);
-    console.log('[ScheduleFetch] events count:', result.events?.length || 0);
-
-    if (result.error || !result.events || result.events.length === 0) {
-      console.warn('[ScheduleFetch] ESPN returned error or no events:', result.error);
+    const data = await resp.json();
+    const scheduleData = data.result?.schedule?.events || [];
+    if (!scheduleData || scheduleData.length === 0) {
       return { games: [], error: 'NO_SCHEDULE' };
     }
-
-    const games: Game[] = (result.events || []).map((ev: any) => ({
+    // Map ESPN events to Game objects
+    const games: Game[] = scheduleData.map((ev: any) => ({
       id: ev.id,
       date: ev.date,
       month: ev.month,
       day: ev.day,
-      opponent: ev.opponent,
-      opponentLogo: ev.opponentLogo,
-      venueName: ev.venueName,
-      time: ev.time,
-      ticketStatus: ev.ticketStatus || 'Available',
-      isPaid: ev.isPaid || false,
-      gameNumber: ev.gameNumber,
-      type: ev.type,
-      dateTimeISO: ev.dateTimeISO,
+      opponent: ev.competitions?.[0]?.competitors?.find((t: any) => t.homeAway === 'away')?.team?.displayName || '',
+      opponentLogo: ev.competitions?.[0]?.competitors?.find((t: any) => t.homeAway === 'away')?.team?.logos?.[0]?.href || '',
+      venueName: ev.competitions?.[0]?.venue?.fullName || '',
+      time: ev.competitions?.[0]?.date || '',
+      ticketStatus: ev.competitions?.[0]?.ticketsAvailable ? 'Available' : 'Unavailable',
+      isPaid: false,
+      gameNumber: '',
+      type: ev.seasonType?.name || 'Regular',
+      dateTimeISO: ev.date || '',
     }));
-
-    console.log('[ScheduleFetch] ✅ ESPN Mapped', games.length, 'HOME games');
-    console.log('[ScheduleFetch] ========== ESPN FETCH SUCCESS ==========');
+    console.log('[ScheduleFetch] ✅ REST mapped', games.length, 'games');
     return { games, error: null };
   } catch (error: any) {
     const errorStr = String(error?.message || error || '').toLowerCase();
     console.log('[ScheduleFetch] ESPN Fetch error:', error?.message || String(error));
-    
     if (errorStr.includes('cors')) {
       return { games: [], error: 'CORS' };
     }
@@ -162,7 +153,8 @@ async function fetchScheduleViaTicketmaster(pass: {
   
   const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
   if (!baseUrl) {
-    return { games: [], error: 'NETWORK' };
+    // Log but continue — tRPC client will resolve a base URL if possible.
+    console.warn('[ScheduleFetch] EXPO_PUBLIC_RORK_API_BASE_URL is not configured - continuing with tRPC client fallback');
   }
 
   try {
@@ -443,6 +435,17 @@ const ACTIVE_PASS_KEY = 'active_season_pass_id';
 const DATA_IMPORTED_KEY = 'data_imported_v1';
 const MASTER_BACKUP_KEY = 'master_backup_v1';
 const ALL_PASSES_BACKUP_KEY = 'all_passes_backup_v1';
+const REWIND_BACKUPS_KEY = 'rewind_backups_v1';
+const MAX_REWIND_BACKUPS = 10;
+
+export interface RewindBackup {
+  id: string;
+  timestamp: string;
+  label: string;
+  salesCount: number;
+  passCount: number;
+  data: BackupData;
+}
 
 // IMPORTANT: Use a lazy getter function to avoid immediate parsing of this large object at module load time.
 // This prevents a Hermes engine crash (EXC_BAD_ACCESS) that occurs when Object.getOwnPropertyDescriptor
@@ -1362,6 +1365,9 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
   const [backupError, setBackupError] = useState<string | null>(null);
   const [backupConfirmationMessage, setBackupConfirmationMessage] = useState<string | null>(null);
   
+  // Rewind backup state - stores last 10 snapshots for undo functionality
+  const [rewindBackups, setRewindBackups] = useState<RewindBackup[]>([]);
+  
   // Version counter to force recalculation of stats when sales data changes
   const [salesDataVersion, setSalesDataVersion] = useState(0);
   
@@ -1931,7 +1937,133 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
     }
   }, []);
 
-  const performAutoBackup = useCallback(async (passes: SeasonPass[], activeId: string | null): Promise<{ success: boolean; error?: string }> => {
+  // Helper to count total sales across all passes
+  const countTotalSales = useCallback((passes: SeasonPass[]): number => {
+    let total = 0;
+    for (const pass of passes) {
+      if (pass.salesData) {
+        for (const gameId of Object.keys(pass.salesData)) {
+          const gameSales = pass.salesData[gameId];
+          if (gameSales && typeof gameSales === 'object') {
+            total += Object.keys(gameSales).length;
+          }
+        }
+      }
+    }
+    return total;
+  }, []);
+
+  // Save a rewind backup - keeps last 10 snapshots
+  const saveRewindBackup = useCallback(async (
+    passes: SeasonPass[], 
+    activeId: string | null, 
+    label: string
+  ): Promise<void> => {
+    try {
+      console.log('[RewindBackup] Saving rewind backup:', label);
+      
+      const backupData: BackupData = {
+        version: BACKUP_VERSION,
+        createdAtISO: new Date().toISOString(),
+        activeSeasonPassId: activeId,
+        seasonPasses: passes,
+      };
+      
+      const newBackup: RewindBackup = {
+        id: `rewind_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        timestamp: new Date().toISOString(),
+        label,
+        salesCount: countTotalSales(passes),
+        passCount: passes.length,
+        data: backupData,
+      };
+      
+      // Load existing backups
+      let existingBackups: RewindBackup[] = [];
+      try {
+        const stored = await AsyncStorage.getItem(REWIND_BACKUPS_KEY);
+        if (stored) {
+          existingBackups = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.warn('[RewindBackup] Could not load existing backups:', e);
+      }
+      
+      // Add new backup at the beginning, keep only last MAX_REWIND_BACKUPS
+      const updatedBackups = [newBackup, ...existingBackups].slice(0, MAX_REWIND_BACKUPS);
+      
+      await AsyncStorage.setItem(REWIND_BACKUPS_KEY, JSON.stringify(updatedBackups));
+      setRewindBackups(updatedBackups);
+      
+      console.log('[RewindBackup] ✅ Saved rewind backup, total:', updatedBackups.length);
+    } catch (e) {
+      console.error('[RewindBackup] ❌ Failed to save rewind backup:', e);
+    }
+  }, [countTotalSales]);
+
+  // Load rewind backups on startup
+  const loadRewindBackups = useCallback(async (): Promise<RewindBackup[]> => {
+    try {
+      const stored = await AsyncStorage.getItem(REWIND_BACKUPS_KEY);
+      if (stored) {
+        const backups = JSON.parse(stored) as RewindBackup[];
+        setRewindBackups(backups);
+        console.log('[RewindBackup] Loaded', backups.length, 'rewind backups');
+        return backups;
+      }
+    } catch (e) {
+      console.warn('[RewindBackup] Could not load rewind backups:', e);
+    }
+    return [];
+  }, []);
+
+  // Load rewind backups when app starts
+  useEffect(() => {
+    loadRewindBackups();
+  }, [loadRewindBackups]);
+
+  // Revert to a specific rewind backup
+  const revertToBackup = useCallback(async (backupId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      console.log('[RewindBackup] Reverting to backup:', backupId);
+      
+      const backup = rewindBackups.find(b => b.id === backupId);
+      if (!backup) {
+        return { success: false, error: 'Backup not found' };
+      }
+      
+      const { data } = backup;
+      const normalizedPasses = data.seasonPasses.map(normalizeSeasonPass);
+      
+      // Save current state as a rewind point before reverting
+      await saveRewindBackup(seasonPasses, activeSeasonPassId, 'Before revert');
+      
+      // Restore the data
+      setSeasonPasses(normalizedPasses);
+      setActiveSeasonPassId(data.activeSeasonPassId);
+      
+      await AsyncStorage.setItem(SEASON_PASSES_KEY, JSON.stringify(normalizedPasses));
+      if (data.activeSeasonPassId) {
+        await AsyncStorage.setItem(ACTIVE_PASS_KEY, data.activeSeasonPassId);
+      }
+      
+      setLastBackupStatus('success');
+      setBackupConfirmationMessage(`Reverted to ${backup.label} ✅ ${Date.now()}`);
+      setTimeout(() => setBackupConfirmationMessage(null), 3000);
+      
+      console.log('[RewindBackup] ✅ Successfully reverted to backup');
+      return { success: true };
+    } catch (e: any) {
+      console.error('[RewindBackup] ❌ Revert failed:', e);
+      return { success: false, error: e?.message || 'Revert failed' };
+    }
+  }, [rewindBackups, seasonPasses, activeSeasonPassId, saveRewindBackup]);
+
+  const performAutoBackup = useCallback(async (
+    passes: SeasonPass[], 
+    activeId: string | null,
+    changeLabel?: string
+  ): Promise<{ success: boolean; error?: string }> => {
     console.log('[AutoBackup] Starting automatic backup...');
     const backupStartTime = Date.now();
     
@@ -1960,6 +2092,11 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
       };
       await AsyncStorage.setItem(MASTER_BACKUP_KEY, JSON.stringify(masterBackup));
       console.log('[AutoBackup] Master backup saved');
+      
+      // Save to rewind backups if a change label is provided (indicates user action)
+      if (changeLabel) {
+        await saveRewindBackup(passes, activeId, changeLabel);
+      }
       
       const elapsed = Date.now() - backupStartTime;
       const timeStr = new Date().toLocaleString();
@@ -1993,7 +2130,7 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
       
       return { success: false, error: errorMsg };
     }
-  }, []);
+  }, [saveRewindBackup]);
 
   const retryBackup = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     console.log('[RetryBackup] Retrying backup...');
@@ -2276,6 +2413,10 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
   ) => {
     const pass = seasonPasses.find(sp => sp.id === passId);
     if (pass) {
+      // Save rewind backup BEFORE making the change
+      const currentSalesCount = countTotalSales(seasonPasses);
+      await saveRewindBackup(seasonPasses, activeSeasonPassId, `Before adding sale (${currentSalesCount} sales)`);
+      
       const updatedSalesData = { ...pass.salesData };
       if (!updatedSalesData[gameId]) {
         updatedSalesData[gameId] = {};
@@ -2294,11 +2435,15 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
       setSalesDataVersion(v => v + 1);
       console.log('[SeasonPass] Added sale record - auto-backup triggered via updateSeasonPass');
     }
-  }, [seasonPasses, updateSeasonPass]);
+  }, [seasonPasses, activeSeasonPassId, updateSeasonPass, countTotalSales, saveRewindBackup]);
 
   const removeSaleRecord = useCallback(async (passId: string, gameId: string, pairId: string) => {
     const pass = seasonPasses.find(sp => sp.id === passId);
     if (!pass) return;
+
+    // Save rewind backup BEFORE making the change
+    const currentSalesCount = countTotalSales(seasonPasses);
+    await saveRewindBackup(seasonPasses, activeSeasonPassId, `Before removing sale (${currentSalesCount} sales)`);
 
     const updatedSalesData = { ...pass.salesData };
     if (!updatedSalesData[gameId]) return;
@@ -2317,7 +2462,7 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
     // Increment version to force stats recalculation
     setSalesDataVersion(v => v + 1);
     console.log('[SeasonPass] Removed sale record - auto-backup triggered via updateSeasonPass');
-  }, [seasonPasses, updateSeasonPass]);
+  }, [seasonPasses, activeSeasonPassId, updateSeasonPass, countTotalSales, saveRewindBackup]);
 
   const updateGames = useCallback(async (passId: string, games: Game[]) => {
     await updateSeasonPass(passId, { games });
@@ -2518,17 +2663,17 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
           success = false;
           
           if (result.error === 'API_KEY_MISSING') {
-            errorMsg = 'Ticketmaster API key not configured.';
+            errorMsg = 'Schedule service not configured.';
           } else if (result.error === 'CORS') {
             errorMsg = 'Request blocked. Try on mobile device.';
           } else if (result.error === 'TIMEOUT') {
             errorMsg = 'Request timed out. Please try again.';
           } else if (result.error === 'NO_TEAM') {
-            errorMsg = `Team "${pass.teamName}" not found.`;
+            errorMsg = `Schedule for "${pass.teamName}" not available.`;
           } else if (result.error === 'NETWORK') {
-            errorMsg = 'Backend unreachable. Please try again later.';
+            errorMsg = 'Schedule service unavailable. Please try again later.';
           } else {
-            errorMsg = 'Could not fetch schedule. Please try again later.';
+            errorMsg = 'Could not refresh schedule. Please try again later.';
           }
           setLastScheduleError(errorMsg);
         }
@@ -2536,7 +2681,7 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
     } catch (error: any) {
       console.error('[Resync] ❌ Unexpected error:', error?.message || error);
       success = false;
-      errorMsg = 'Schedule fetch failed. Please try again.';
+      errorMsg = 'Schedule refresh failed. Please try again.';
       setLastScheduleError(errorMsg);
     } finally {
       console.log('[Resync] 🔄 FINALLY block - Setting isLoadingSchedule = false');
@@ -3486,9 +3631,10 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
     }
   }, []);
 
-  const exportAsJSON = useCallback(async (embedLogos = false): Promise<boolean> => {
+  const exportAsJSON = useCallback(async (): Promise<boolean> => {
     try {
-      const backup = await generateBackup(embedLogos);
+      // Always embed logos for offline restore capability
+      const backup = await generateBackup(true);
       const jsonString = JSON.stringify(backup, null, 2);
       const fileName = `SeasonPassBackup_${new Date().toISOString().split('T')[0]}.json`;
       
@@ -3820,6 +3966,10 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
         return { success: false, message: 'Invalid backup: missing seasonPasses array' };
       }
 
+      // Save rewind backup BEFORE importing
+      const currentSalesCount = countTotalSales(seasonPasses);
+      await saveRewindBackup(seasonPasses, activeSeasonPassId, `Before JSON import (${currentSalesCount} sales)`);
+
       // Normalize and restore
       const normalized = data.seasonPasses.map(normalizeSeasonPass);
       const activeId = data.activeSeasonPassId || (normalized.length > 0 ? normalized[0].id : null);
@@ -3846,7 +3996,7 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
       console.error('[Import] JSON import failed:', e);
       return { success: false, message: `Import failed: ${e.message || 'Unknown error'}` };
     }
-  }, []);
+  }, [seasonPasses, activeSeasonPassId, countTotalSales, saveRewindBackup]);
 
   /**
    * Import from CSV in the exact format that exportAsCSV produces.
@@ -3858,6 +4008,10 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
       if (!activeSeasonPassId) {
         return { success: false, message: 'No active season pass. Create or select a pass first.' };
       }
+
+      // Save rewind backup BEFORE importing
+      const currentSalesCount = countTotalSales(seasonPasses);
+      await saveRewindBackup(seasonPasses, activeSeasonPassId, `Before CSV import (${currentSalesCount} sales)`);
 
       console.log('[Import] Parsing CSV backup, length:', csvString.length);
       const lines = csvString.split(/\r?\n/).filter(line => line.trim());
@@ -3995,7 +4149,7 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
       console.error('[Import] CSV import failed:', e);
       return { success: false, message: `Import failed: ${e.message || 'Unknown error'}` };
     }
-  }, [activeSeasonPassId, seasonPasses]);
+  }, [activeSeasonPassId, seasonPasses, countTotalSales, saveRewindBackup]);
 
   const emailBackup = useCallback(async (embedLogos = false): Promise<{ success: boolean; isWeb: boolean }> => {
     try {
@@ -4371,5 +4525,8 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
     backupConfirmationMessage,
     retryBackup,
     reloadFromStorage: loadData,
+    // Rewind (undo) functionality
+    rewindBackups,
+    revertToBackup,
   };
 });

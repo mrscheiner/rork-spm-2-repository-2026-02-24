@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { createTRPCRouter, publicProcedure } from "../create-context";
 
-const ESPN_LEAGUE_CONFIG: Record<string, { sport: string; league: string }> = {
+export const ESPN_LEAGUE_CONFIG: Record<string, { sport: string; league: string }> = {
   nba: { sport: "basketball", league: "nba" },
   nhl: { sport: "hockey", league: "nhl" },
   nfl: { sport: "football", league: "nfl" },
@@ -153,6 +153,25 @@ export const espnRouter = createTRPCRouter({
   getTeams: publicProcedure
     .input(z.object({ leagueId: z.string() }))
     .query(async ({ input }) => {
+        // Patch: Bypass tRPC input validation for debugging
+        let patchedInput = input;
+        try {
+          if (!input || typeof input !== 'object') {
+            if (typeof globalThis !== 'undefined' && globalThis.request) {
+              const url = new URL(globalThis.request.url);
+              const inputParam = url.searchParams.get('input');
+              if (inputParam) {
+                patchedInput = JSON.parse(inputParam);
+              }
+            }
+          }
+        } catch (e) {
+          console.log('[ESPN_FULL] PATCH input parse error:', e);
+        }
+        console.log('[ESPN_FULL] Handler invoked. Patched input:', patchedInput);
+        if (!patchedInput || typeof patchedInput !== 'object' || !patchedInput.leagueId || !patchedInput.teamId || !patchedInput.teamName) {
+          return { events: [], error: 'INVALID_INPUT' };
+        }
       console.log('[ESPN_PROXY] getTeams HIT - input:', JSON.stringify(input));
       const leagueKey = input.leagueId === "usa.1" ? "mls" : input.leagueId.toLowerCase();
       const cfg = ESPN_LEAGUE_CONFIG[leagueKey];
@@ -380,14 +399,34 @@ export const espnRouter = createTRPCRouter({
       })
     )
     .query(async ({ input }) => {
-      console.log('[ESPN_FULL] ========== getFullSchedule START ==========');
-      console.log('[ESPN_FULL] Input:', JSON.stringify(input));
 
-      const leagueKey = input.leagueId === "usa.1" ? "mls" : input.leagueId.toLowerCase();
+      // Patch: Accept input from GET query string if undefined, bypass tRPC input validation
+      let patchedInput = input;
+      if (!input || typeof input !== 'object') {
+        try {
+          if (typeof globalThis !== 'undefined' && globalThis.request) {
+            const url = new URL(globalThis.request.url);
+            const inputParam = url.searchParams.get('input');
+            if (inputParam) {
+              patchedInput = JSON.parse(inputParam);
+            }
+          }
+        } catch (e) {
+          console.log('[ESPN_FULL] PATCH input parse error:', e);
+        }
+      }
+      // Manual validation
+      if (!patchedInput || typeof patchedInput !== 'object' || !patchedInput.leagueId || !patchedInput.teamId || !patchedInput.teamName) {
+        return { events: [], error: 'INVALID_INPUT' };
+      }
+      console.log('[ESPN_FULL] ========== getFullSchedule START ==========');
+      console.log('[ESPN_FULL] Input:', JSON.stringify(patchedInput));
+
+      const leagueKey = patchedInput.leagueId === "usa.1" ? "mls" : patchedInput.leagueId.toLowerCase();
       const cfg = ESPN_LEAGUE_CONFIG[leagueKey];
 
       if (!cfg) {
-        console.log('[ESPN_FULL] INVALID_LEAGUE - no config for:', input.leagueId);
+        console.log('[ESPN_FULL] INVALID_LEAGUE - no config for:', patchedInput.leagueId);
         return { events: [], error: "INVALID_LEAGUE" };
       }
 
@@ -458,6 +497,12 @@ export const espnRouter = createTRPCRouter({
           const tCity = norm(t?.location || '');
           const ourCity = teamNameWords[0] || '';
           return tCity && ourCity && (tCity.includes(ourCity) || ourCity.includes(tCity));
+        }) ||
+        // Special handling for OKC Thunder
+        teams.find((t) => {
+          // ESPN sometimes uses 'Oklahoma City' or 'Thunder' in displayName or name
+          const tName = normSpaces(t?.displayName || t?.name || '');
+          return tName.includes('oklahoma') && tName.includes('thunder');
         }) ||
         null;
       

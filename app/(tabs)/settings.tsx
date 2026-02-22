@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { FileText, Plus, Users, RefreshCw, Table, Trash2, Wrench, Download, Upload } from "lucide-react-native";
+import { FileText, Plus, Users, RefreshCw, Table, Trash2, Download, Upload, History } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import * as Haptics from 'expo-haptics';
@@ -9,14 +9,10 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { AppColors } from "@/constants/appColors";
-import { STORAGE_PREFIX } from "@/constants/storage";
 import { useSeasonPass } from "@/providers/SeasonPassProvider";
 import { APP_VERSION } from "@/constants/appVersion";
 import { Image } from 'expo-image';
-import DeveloperSettings from "@/components/DeveloperSettings";
 import { buildGradientFromPass } from "@/constants/teamThemes";
-
-const DEV_TAP_THRESHOLD = 5;
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -43,9 +39,6 @@ export default function SettingsScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isRetryingBackup, setIsRetryingBackup] = useState(false);
-  const [showDevTools, setShowDevTools] = useState(typeof __DEV__ !== 'undefined' && __DEV__ === true);
-  const devTapCount = useRef(0);
-  const devTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleAddSeasonPass = useCallback(() => {
     router.push('/setup' as any);
@@ -56,7 +49,7 @@ export default function SettingsScreen() {
 
     Alert.alert(
       'Resync Schedule',
-      `This will fetch the latest HOME games from ESPN for ${activeSeasonPass?.teamName}. Your sales data will be preserved.`,
+      `This will refresh the HOME game schedule for ${activeSeasonPass?.teamName}. Your sales data will be preserved.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -71,14 +64,14 @@ export default function SettingsScreen() {
               const result = await Promise.race([resyncSchedule(activeSeasonPassId), timeoutPromise]);
               if (result.success) {
                 try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* ignore */ }
-                Alert.alert('Success', 'Schedule has been updated with the latest HOME games.');
+                Alert.alert('Success', 'Schedule has been refreshed.');
               } else {
                 try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch { /* ignore */ }
-                Alert.alert('Schedule Unavailable', result.error || 'Could not fetch schedule. Please try again later.');
+                Alert.alert('Schedule Unavailable', result.error || 'Could not refresh schedule. Please try again later.');
               }
             } catch (error) {
               console.error('[Settings] Resync error:', error);
-              Alert.alert('Error', 'Failed to resync schedule. Please try again.');
+              Alert.alert('Error', 'Failed to refresh schedule. Please try again.');
             } finally {
               setIsResyncing(false);
             }
@@ -246,22 +239,6 @@ export default function SettingsScreen() {
     }
   }, [retryBackup]);
 
-  const handleVersionTap = useCallback(() => {
-    devTapCount.current += 1;
-    if (devTapTimer.current) clearTimeout(devTapTimer.current);
-    devTapTimer.current = setTimeout(() => { devTapCount.current = 0; }, 2000);
-
-    if (devTapCount.current >= DEV_TAP_THRESHOLD) {
-      devTapCount.current = 0;
-      setShowDevTools((prev) => {
-        const next = !prev;
-        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch { /* ignore */ }
-        Alert.alert(next ? 'Developer Tools Enabled' : 'Developer Tools Hidden');
-        return next;
-      });
-    }
-  }, []);
-
   const gradientColors = buildGradientFromPass(activeSeasonPass);
 
   return (
@@ -334,8 +311,8 @@ export default function SettingsScreen() {
                     </Text>
                     <Text style={styles.settingDescription}>
                       {isResyncing
-                        ? `Fetching latest ${activeSeasonPass.teamName} games...`
-                        : 'Update HOME games from ESPN/Ticketmaster'}
+                        ? `Refreshing ${activeSeasonPass.teamName} schedule...`
+                        : 'Refresh HOME game schedule'}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -442,6 +419,24 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>HISTORY</Text>
+            <TouchableOpacity
+              style={styles.settingCard}
+              onPress={() => router.push('/rewind' as any)}
+            >
+              <View style={[styles.iconContainer, { backgroundColor: '#E3F2FD' }]}>
+                <History size={24} color="#1976D2" />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>Rewind Changes</Text>
+                <Text style={styles.settingDescription}>
+                  View and restore previous states
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.dangerZone}>
             <Text style={styles.dangerZoneTitle}>MANAGE</Text>
             {activeSeasonPass && (
@@ -461,23 +456,6 @@ export default function SettingsScreen() {
             )}
           </View>
 
-          {showDevTools && <DeveloperSettings />}
-
-          {!showDevTools && (
-            <TouchableOpacity
-              style={styles.showDevButton}
-              onPress={() => {
-                if (typeof __DEV__ !== 'undefined' && __DEV__ === true) {
-                  setShowDevTools(true);
-                } else {
-                  Alert.alert('Developer Tools', 'Tap the version label 5 times to unlock.');
-                }
-              }}
-            >
-              <Wrench size={16} color={AppColors.textLight} />
-              <Text style={styles.showDevButtonText}>Developer Tools</Text>
-            </TouchableOpacity>
-          )}
         </ScrollView>
 
         {!!backupConfirmationMessage && (
@@ -486,21 +464,16 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7}>
-          <View style={styles.versionContainer}>
-            <Image
-              source={{
-                uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/7mf3piipeptxq49889fh3',
-              }}
-              style={styles.footerLogo}
-              contentFit="contain"
-            />
-            <Text style={styles.versionLabel}>Season Pass Manager • {APP_VERSION}</Text>
-            <Text style={styles.storagePrefixLabel} testID="storage-prefix-text">
-              {`STORAGE PREFIX: ${STORAGE_PREFIX}`}
-            </Text>
-          </View>
-        </TouchableOpacity>
+        <View style={styles.versionContainer}>
+          <Image
+            source={{
+              uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/7mf3piipeptxq49889fh3',
+            }}
+            style={styles.footerLogo}
+            contentFit="contain"
+          />
+          <Text style={styles.versionLabel}>Season Pass Manager • {APP_VERSION}</Text>
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -641,19 +614,6 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
     lineHeight: 18,
   },
-  showDevButton: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 6,
-    paddingVertical: 12,
-    marginBottom: 8,
-  },
-  showDevButtonText: {
-    fontSize: 13,
-    color: AppColors.textLight,
-    fontWeight: '600' as const,
-  },
   versionContainer: {
     alignItems: 'center' as const,
     paddingVertical: 12,
@@ -663,13 +623,6 @@ const styles = StyleSheet.create({
     color: AppColors.textLight,
     textAlign: 'center' as const,
     marginBottom: 6,
-  },
-  storagePrefixLabel: {
-    fontSize: 11,
-    color: AppColors.textLight,
-    textAlign: 'center' as const,
-    opacity: 0.8,
-    marginBottom: 12,
   },
   footerLogo: {
     width: 120,

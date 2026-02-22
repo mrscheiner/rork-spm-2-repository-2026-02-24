@@ -5,6 +5,9 @@ import React, { Component, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Dimensions, Platform, Text, TextInput, View, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SeasonPassProvider } from "@/providers/SeasonPassProvider";
+import { AppThemeProvider } from "../components/AppThemeProvider";
+import { getTeamTheme } from "../constants/teamThemes";
+import { EventsProvider } from "@/providers/EventsProvider";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { checkAndSeedCanonicalData } from "@/lib/canonicalBootstrap";
 
@@ -149,6 +152,13 @@ function RootLayoutNav() {
           presentation: "modal",
         }} 
       />
+      <Stack.Screen 
+        name="rewind" 
+        options={{ 
+          headerShown: false,
+          presentation: "modal",
+        }} 
+      />
     </Stack>
   );
 }
@@ -186,12 +196,12 @@ export default function RootLayout() {
 
       if (!shouldCompact) return { flex: 1 } as const;
 
-      const expandedWidthPct = `${Math.round((100 / compactScale) * 10) / 10}%`;
+      const expandedWidthPct = `${Math.round((100 / compactScale) * 10) / 10}%` as const;
 
       return {
         flex: 1,
         alignSelf: "center" as const,
-        width: expandedWidthPct,
+        width: expandedWidthPct as unknown as number,
         transform: [{ scale: compactScale }],
       };
     } catch (e) {
@@ -208,15 +218,21 @@ export default function RootLayout() {
     );
   }
 
+  // Set initial theme to Panthers as default, or customize as needed
+  const initialTheme = getTeamTheme('fla');
   return (
     <AppErrorBoundary>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          <SeasonPassProvider>
-            <GestureHandlerRootView style={rootViewStyle}>
-              <RootLayoutNav />
-            </GestureHandlerRootView>
-          </SeasonPassProvider>
+          <AppThemeProvider initialTheme={initialTheme}>
+            <SeasonPassProvider>
+              <EventsProvider>
+                <GestureHandlerRootView style={rootViewStyle}>
+                  <RootLayoutNav />
+                </GestureHandlerRootView>
+              </EventsProvider>
+            </SeasonPassProvider>
+          </AppThemeProvider>
         </QueryClientProvider>
       </trpc.Provider>
     </AppErrorBoundary>

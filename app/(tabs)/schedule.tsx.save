@@ -241,6 +241,7 @@ function StatusBadge({ isPaid }: StatusBadgeProps) {
 }
 
 interface ComputedGame extends Game {
+
   isPast: boolean;
   ticketsTotal: number;
   ticketsSold: number;
@@ -274,21 +275,27 @@ export default function ScheduleScreen() {
     return (activeSeasonPass.games || []).map(game => {
       const gameDate = game.dateTimeISO ? new Date(game.dateTimeISO).getTime() : new Date(game.date).getTime();
       const isPast = gameDate < now;
+      
       const pairsForGame = activeSeasonPass.salesData[game.id] || {};
       const salesCount = Object.keys(pairsForGame).length;
+      
       const ticketsSold = Object.values(pairsForGame).reduce((acc, sale) => {
         if (!sale) return acc;
-        const sc = typeof sale.seatCount === 'number' && sale.seatCount > 0
-          ? sale.seatCount
+        const sc = typeof sale.seatCount === 'number' && sale.seatCount > 0 
+          ? sale.seatCount 
           : parseSeatsCount(sale?.seats) || 2;
-        return acc + sc;
-      }, 0);
-const ticketsAvailable = ticketsPerGame - ticketsSold;
-      // ...existing code...
+      const { theme } = useAppTheme();
+      const teamPrimaryColor = theme.primary;
+      const gradientColors = theme.gradient;
+      if (salesCount > 0) {
+        console.log('[Schedule] Game', game.gameNumber, game.opponent, '- sales:', salesCount, 'sold:', ticketsSold, 'available:', ticketsAvailable);
+      }
+      
       const allPaid = seatPairIds.every(pairId => {
         const sale = pairsForGame[pairId];
         return sale && (sale.paymentStatus === 'Paid' || sale.paymentStatus.toLowerCase() === 'paid');
       });
+      
       return {
         ...game,
         isPast,

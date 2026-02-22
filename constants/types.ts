@@ -36,6 +36,24 @@ export interface Event {
   status: 'Pending' | 'Sold';
 }
 
+/** Standalone event ticket (separate from season passes) */
+export interface StandaloneEvent {
+  id: string;
+  eventName: string;        // e.g., "Taylor Swift"
+  venue: string;            // e.g., "Hard Rock Stadium"
+  location: string;         // e.g., "Miami, FL"
+  eventDate: string;        // ISO date string
+  section: string;
+  row: string;
+  seats: string;            // e.g., "1-2" or "5, 6, 7"
+  seatCount: number;
+  pricePaid: number;
+  priceSold: number | null;
+  status: 'Pending' | 'Paid';
+  notes?: string;
+  createdAt: string;        // ISO date string
+}
+
 export interface MonthlyRevenue {
   month: string;
   revenue: number;

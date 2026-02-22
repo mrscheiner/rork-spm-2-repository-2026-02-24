@@ -325,14 +325,14 @@ export const ticketmasterRouter = createTRPCRouter({
       console.log("[TM_PROXY] ========== getSchedule HIT ==========");
       console.log("[TM_PROXY] Input:", JSON.stringify(input));
 
-      const apiKey = process.env.TICKETMASTER_API_KEY;
+      // Cloudflare Workers compatible - check for env var safely
+      const apiKey = typeof process !== 'undefined' && process.env?.TICKETMASTER_API_KEY;
       const hasKey = Boolean(apiKey);
-      const keyLength = apiKey?.length ?? 0;
+      const keyLength = typeof apiKey === 'string' ? apiKey.length : 0;
       console.log("[TM_PROXY] API Key check: hasKey=", hasKey, "keyLength=", keyLength);
       
       if (!apiKey) {
-        console.error("[TM_PROXY] ❌ TICKETMASTER_API_KEY not set in process.env");
-        console.error("[TM_PROXY] Available env vars (names only):", Object.keys(process.env).filter(k => !k.startsWith('npm_')).join(', '));
+        console.log("[TM_PROXY] TICKETMASTER_API_KEY not configured - this is expected if not using Ticketmaster");
         return { events: [], error: "API_KEY_MISSING" };
       }
 

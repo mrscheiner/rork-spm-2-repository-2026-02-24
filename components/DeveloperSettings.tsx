@@ -14,9 +14,7 @@ import {
   Shield,
   Folder,
   Trash2,
-  Table,
   Eraser,
-  Database,
   Key,
 } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -25,46 +23,20 @@ import { useRouter } from 'expo-router';
 import { AppColors } from '@/constants/appColors';
 import { resetAllData, STORAGE_PREFIX } from '@/constants/storage';
 import { useSeasonPass } from '@/providers/SeasonPassProvider';
-import { CANONICAL_DATA_VERSION } from '@/constants/canonicalData';
-import { resetToCanonicalData } from '@/lib/canonicalBootstrap';
 
 export default function DeveloperSettings() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const {
-    activeSeasonPass,
-    activeSeasonPassId,
-    debugFetchLogosFromEspnForPass,
     createRecoveryCode,
     prepareBackupPackage,
     clearAllData,
-    reloadFromStorage,
   } = useSeasonPass();
 
   const [isExporting, setIsExporting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
-  const [isCanonicalResetting, setIsCanonicalResetting] = useState(false);
   const includeLogos = false;
-
-  const handleFetchEspnLogos = useCallback(async () => {
-    if (!activeSeasonPassId) return;
-    try {
-      const res: any = await debugFetchLogosFromEspnForPass(activeSeasonPassId);
-      console.log('[DevSettings] debugFetchLogosFromEspnForPass result:', res);
-      if (res && res.success) {
-        const msg = res.changed
-          ? `Updated ${res.details.length} games (logos applied where matched).`
-          : 'No logos resolved automatically.';
-        Alert.alert('ESPN Logo Debug', msg);
-      } else {
-        Alert.alert('ESPN Logo Debug', `Failed: ${res?.error || 'unknown'}`);
-      }
-    } catch (e) {
-      console.error('[DevSettings] handleFetchEspnLogos error:', e);
-      Alert.alert('Error', 'Failed to fetch logos from ESPN. Check logs.');
-    }
-  }, [activeSeasonPassId, debugFetchLogosFromEspnForPass]);
 
   const handleGenerateRecoveryCode = useCallback(async () => {
     setIsExporting(true);
@@ -146,43 +118,6 @@ export default function DeveloperSettings() {
     );
   }, [clearAllData, isResetting, router]);
 
-  const handleResetToCanonical = useCallback(() => {
-    if (isCanonicalResetting) return;
-    Alert.alert(
-      'Reset to Canonical Data',
-      `This will erase all local data and restore the default dataset (v${CANONICAL_DATA_VERSION}). This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            setIsCanonicalResetting(true);
-            try {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-              const success = await resetToCanonicalData();
-              if (success) {
-                console.log('[DevSettings] Canonical reset succeeded, reloading data...');
-                await reloadFromStorage();
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert('Success', 'App data has been reset to the canonical dataset.');
-              } else {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                Alert.alert('Error', 'Failed to reset to canonical data.');
-              }
-            } catch (e) {
-              console.error('[DevSettings] Canonical reset error:', e);
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert('Error', 'Failed to reset to canonical data.');
-            } finally {
-              setIsCanonicalResetting(false);
-            }
-          },
-        },
-      ],
-    );
-  }, [isCanonicalResetting, reloadFromStorage]);
-
   return (
     <>
       <View style={styles.section}>
@@ -190,45 +125,6 @@ export default function DeveloperSettings() {
           <Key size={14} color="#F59E0B" />
           <Text style={styles.devBadgeText}>DEVELOPER TOOLS</Text>
         </View>
-
-        <TouchableOpacity
-          style={[styles.devCard, isCanonicalResetting && styles.cardDisabled]}
-          onPress={handleResetToCanonical}
-          disabled={isCanonicalResetting}
-          testID="devSettings.resetToCanonical"
-        >
-          <View style={[styles.iconContainer, { backgroundColor: '#DBEAFE' }]}>
-            {isCanonicalResetting ? (
-              <ActivityIndicator size="small" color="#2563EB" />
-            ) : (
-              <Database size={24} color="#2563EB" />
-            )}
-          </View>
-          <View style={styles.settingContent}>
-            <Text style={styles.settingTitle}>Reset to Canonical Data</Text>
-            <Text style={styles.settingDescription}>
-              Wipe local storage & re-seed from bundled dataset v{CANONICAL_DATA_VERSION}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {activeSeasonPass && (
-          <TouchableOpacity
-            style={styles.devCard}
-            onPress={handleFetchEspnLogos}
-            disabled={!activeSeasonPassId}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: '#E1F5FE' }]}>
-              <Table size={24} color="#0288D1" />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={styles.settingTitle}>Attempt ESPN Logos</Text>
-              <Text style={styles.settingDescription}>
-                Try to resolve missing opponent logos using ESPN team data
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
 
         <TouchableOpacity
           style={[styles.devCard, isExporting && styles.cardDisabled]}
@@ -369,8 +265,6 @@ export default function DeveloperSettings() {
       </View>
 
       <View style={styles.devInfoCard}>
-        <Text style={styles.devInfoLabel}>Canonical Data Version</Text>
-        <Text style={styles.devInfoValue}>{CANONICAL_DATA_VERSION}</Text>
         <Text style={styles.devInfoLabel}>Storage Prefix</Text>
         <Text style={styles.devInfoValue}>{STORAGE_PREFIX}</Text>
       </View>

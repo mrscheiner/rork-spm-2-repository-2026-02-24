@@ -4,9 +4,11 @@ import React, { useEffect, useRef } from "react";
 import { View, ActivityIndicator, StyleSheet, Text, Platform, Animated } from "react-native";
 
 import { AppColors } from "@/constants/appColors";
+import { useAppTheme } from "../../components/AppThemeProvider";
 import { useSeasonPass } from "@/providers/SeasonPassProvider";
 
 export default function TabLayout() {
+  const { theme } = useAppTheme();
   const router = useRouter();
   const { isLoading, needsSetup, activeSeasonPass, backupConfirmationMessage, lastBackupStatus, lastBackupTime } = useSeasonPass();
   console.log('[TabLayout] render - isLoading:', isLoading, 'needsSetup:', needsSetup, 'activePass:', activeSeasonPass?.teamName);
@@ -38,82 +40,7 @@ export default function TabLayout() {
     }
   }, [backupConfirmationMessage, toastOpacity]);
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={AppColors.primary} />
-      </View>
-    );
-  }
-
-  if (needsSetup) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={AppColors.primary} />
-      </View>
-    );
-  }
-
-  const teamPrimaryColor = activeSeasonPass?.teamPrimaryColor || AppColors.primary;
-
-  // Wrap Tabs in a small web-friendly container when opened via the web preview.
-  const TabsContent = (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: teamPrimaryColor,
-        tabBarInactiveTintColor: AppColors.iconGray,
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: AppColors.white,
-          borderTopColor: AppColors.border,
-          borderTopWidth: 1,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '600',
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) => <Home size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="schedule"
-        options={{
-          title: "Schedule",
-          tabBarIcon: ({ color }) => <Calendar size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: "Analytics",
-          tabBarIcon: ({ color }) => <TrendingUp size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="events"
-        options={{
-          title: "Events",
-          tabBarIcon: ({ color }) => <Ticket size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
-        }}
-      />
-    </Tabs>
-  );
-
   const shouldShowToast = !!backupConfirmationMessage && !!lastBackupStatus;
-  
   const BackupToast = shouldShowToast ? (
     <Animated.View 
       style={[
@@ -140,26 +67,58 @@ export default function TabLayout() {
       ) : null}
     </Animated.View>
   ) : null;
-
-  if (Platform.OS === 'web') {
-    return (
-      <View style={styles.webWrapper}>
-        <View style={styles.webBanner}>
-          <Text style={styles.webBannerText}>
-            Viewing web preview — for native mobile testing scan the QR in the Expo Go app.
-          </Text>
-        </View>
-        {TabsContent}
-        {BackupToast}
-      </View>
-    );
-  }
-
   return (
-    <View style={{ flex: 1 }}>
-      {TabsContent}
+    <>
+      {Platform.OS === 'web' && (
+        <View style={styles.webWrapper}>
+          <View style={styles.webBanner}>
+            <Text style={styles.webBannerText}>
+              Viewing web preview — for native mobile testing scan the QR in the Expo Go app.
+            </Text>
+          </View>
+        </View>
+      )}
+      <View style={{ flex: 1 }}>
+        <Tabs screenOptions={{ headerShown: false }}>
+          <Tabs.Screen
+            name="index"
+            options={{
+              title: "Home",
+              tabBarIcon: ({ color, size }) => <Home color={color} size={size} />, 
+            }}
+          />
+          <Tabs.Screen
+            name="schedule"
+            options={{
+              title: "Schedule",
+              tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />, 
+            }}
+          />
+          <Tabs.Screen
+            name="analytics"
+            options={{
+              title: "Analytics",
+              tabBarIcon: ({ color, size }) => <TrendingUp color={color} size={size} />, 
+            }}
+          />
+          <Tabs.Screen
+            name="events"
+            options={{
+              title: "Events",
+              tabBarIcon: ({ color, size }) => <Ticket color={color} size={size} />, 
+            }}
+          />
+          <Tabs.Screen
+            name="settings"
+            options={{
+              title: "Settings",
+              tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />, 
+            }}
+          />
+        </Tabs>
+      </View>
       {BackupToast}
-    </View>
+    </>
   );
 }
 

@@ -1,8 +1,12 @@
 import { initTRPC } from "@trpc/server";
-import { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import superjson from "superjson";
 
-export const createContext = async (opts: FetchCreateContextFnOptions) => {
+// tRPC v11 context type
+interface CreateContextOptions {
+  req: Request;
+}
+
+export const createContext = async (opts: CreateContextOptions) => {
   return {
     req: opts.req,
   };
