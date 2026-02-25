@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Modal, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Modal, ScrollView, Pressable, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronDown, Plus, Check, Pencil, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -14,15 +14,24 @@ export default function SeasonPassSelector() {
 
   // version marker helps detect stale JS bundle
   useEffect(() => {
-    console.log('[Selector] SeasonPassSelector v2 rendered, passes count:', seasonPasses.length);
+    console.log('[Selector] SeasonPassSelector v3 rendered, passes count:', seasonPasses.length);
   }, [seasonPasses.length]);
   const [isOpen, setIsOpen] = useState(false);
+  // which pass is currently highlighted in modal
+  const [selectedPassId, setSelectedPassId] = useState<string | null>(null);
 
   const handleSelect = useCallback(async (passId: string) => {
     console.log('[Selector] Switching to pass:', passId);
     await switchSeasonPass(passId);
     setIsOpen(false);
   }, [switchSeasonPass]);
+
+  // when modal opens we want to highlight the current pass
+  useEffect(() => {
+    if (isOpen && activeSeasonPass) {
+      setSelectedPassId(activeSeasonPass.id);
+    }
+  }, [isOpen, activeSeasonPass]);
 
   const handleAddNew = useCallback(() => {
     setIsOpen(false);
@@ -79,58 +88,73 @@ export default function SeasonPassSelector() {
       <Modal visible={isOpen} transparent animationType="fade" onRequestClose={() => setIsOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setIsOpen(false)}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Season Passes</Text>
-            <ScrollView style={styles.passesList} showsVerticalScrollIndicator={false}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Season Passes</Text>
+              <TouchableOpacity onPress={() => setIsOpen(false)} style={styles.doneButton}>
+                <Text style={styles.doneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            >
               {seasonPasses.map(pass => {
                 const passTheme = getTeamTheme(pass.teamId);
-                const isActive = pass.id === activeSeasonPass.id;
+                const isSelected = pass.id === selectedPassId;
                 return (
-                  <View key={pass.id} style={[styles.passItem, isActive && { backgroundColor: passTheme.primary }]}>
-                    <TouchableOpacity
-                      style={styles.passSelectArea}
-                      onPress={() => handleSelect(pass.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[styles.passColorDot, { backgroundColor: passTheme.primary }]} />
-                      {pass.teamLogoUrl ? (
-                        <Image source={{ uri: pass.teamLogoUrl }} style={styles.passLogo} contentFit="contain" />
-                      ) : (
-                        <View style={[styles.passLogo, styles.logoPlaceholder]} />
-                      )}
-                      <View style={styles.passInfo}>
-                        <Text style={[styles.passTeamName, isActive && { color: passTheme.textOnPrimary }]}>{pass.teamName}</Text>
-                        <Text style={[styles.passSeason, isActive && { color: passTheme.textOnPrimary, opacity: 0.8 }]}>{pass.seasonLabel}</Text>
-                      </View>
-                      {isActive && (
-                        <View style={styles.checkIcon}>
-                          <Check size={18} color={AppColors.white} />
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity
-                        style={[styles.editButton, isActive && { backgroundColor: 'rgba(255,255,255,0.2)' }]}
-                        onPress={() => handleEdit(pass.id)}
-                        activeOpacity={0.7}
-                      >
-                        <Pencil size={16} color={isActive ? passTheme.textOnPrimary : AppColors.textSecondary} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.deleteButton, isActive && { backgroundColor: 'rgba(255,0,0,0.2)' }]}
-                        onPress={() => handleDelete(pass.id)}
-                        activeOpacity={0.7}
-                      >
-                        <Trash2 size={16} color={isActive ? passTheme.textOnPrimary : AppColors.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                  <TouchableOpacity
+                    key={pass.id}
+                    style={[styles.card, isSelected && { borderColor: passTheme.primary }]}
+                    onPress={() => setSelectedPassId(pass.id)}
+                    activeOpacity={0.7}
+                  >
+                    {pass.teamLogoUrl ? (
+                      <Image source={{ uri: pass.teamLogoUrl }} style={styles.cardLogo} contentFit="contain" />
+                    ) : (
+                      <View style={[styles.cardLogo, styles.logoPlaceholder]} />
+                    )}
+                    <Text style={styles.cardName} numberOfLines={1}>{pass.teamName}</Text>
+                  </TouchableOpacity>
                 );
               })}
+              <TouchableOpacity
+                style={[styles.card, styles.addCard]}
+                onPress={handleAddNew}
+                activeOpacity={0.7}
+              >
+                <Plus size={24} color={AppColors.accent} />
+                <Text style={styles.cardName}>Add</Text>
+              </TouchableOpacity>
             </ScrollView>
-            <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
-              <Plus size={20} color={AppColors.white} />
-              <Text style={styles.addButtonText}>Add Season Pass</Text>
-            </TouchableOpacity>
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                disabled={!selectedPassId || selectedPassId === activeSeasonPass?.id}
+                onPress={() => selectedPassId && handleEdit(selectedPassId)}
+                style={styles.actionButton}
+                activeOpacity={0.7}
+              >
+                <Pencil size={18} color={AppColors.textPrimary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={!selectedPassId}
+                onPress={() => selectedPassId && handleDelete(selectedPassId)}
+                style={styles.actionButton}
+                activeOpacity={0.7}
+              >
+                <Trash2 size={18} color={AppColors.textPrimary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={!selectedPassId}
+                onPress={() => selectedPassId && handleSelect(selectedPassId)}
+                style={styles.actionButton}
+                activeOpacity={0.7}
+              >
+                <Check size={18} color={AppColors.textPrimary} />
+              </TouchableOpacity>
+            </View>
           </View>
         </Pressable>
       </Modal>
@@ -278,5 +302,55 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: AppColors.white,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  doneButton: {
+    padding: 6,
+  },
+  doneText: {
+    fontSize: 16,
+    color: AppColors.accent,
+    fontWeight: '600',
+  },
+  horizontalList: {
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  card: {
+    width: 100,
+    alignItems: 'center',
+    marginHorizontal: 8,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  cardLogo: {
+    width: 48,
+    height: 48,
+    marginBottom: 6,
+  },
+  cardName: {
+    fontSize: 12,
+    textAlign: 'center',
+    color: AppColors.textPrimary,
+  },
+  addCard: {
+    backgroundColor: 'rgba(0,0,0,0.03)',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+  },
+  actionButton: {
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.04)',
   },
 });
