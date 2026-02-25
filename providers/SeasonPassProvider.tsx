@@ -17,6 +17,8 @@ import { trpcClient } from '@/lib/trpc';
 import { parseSeatsCount } from '@/lib/seats';
 
 const BACKUP_VERSION = '1.0';
+// storage key used to remember which JS bundle version last ran
+const BUNDLE_VERSION_KEY = '@rork:bundle_version';
 
 async function withMasterTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
