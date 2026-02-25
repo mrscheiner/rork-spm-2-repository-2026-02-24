@@ -218,21 +218,19 @@ export default function RootLayout() {
     );
   }
 
-  // Set initial theme to Panthers as default, or customize as needed
-  const initialTheme = getTeamTheme('fla');
   return (
     <AppErrorBoundary>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          <AppThemeProvider initialTheme={initialTheme}>
-            <SeasonPassProvider>
+          <SeasonPassProvider>
+            <AppThemeProvider>
               <EventsProvider>
                 <GestureHandlerRootView style={rootViewStyle}>
                   <RootLayoutNav />
                 </GestureHandlerRootView>
               </EventsProvider>
-            </SeasonPassProvider>
-          </AppThemeProvider>
+            </AppThemeProvider>
+          </SeasonPassProvider>
         </QueryClientProvider>
       </trpc.Provider>
     </AppErrorBoundary>
