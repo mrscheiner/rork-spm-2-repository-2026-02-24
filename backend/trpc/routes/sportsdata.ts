@@ -69,8 +69,9 @@ export const sportsdataRouter = createTRPCRouter({
       try {
         const data: any[] = await res.json();
         const abbrev = input.teamId.toUpperCase();
+        // only keep home games; away games are irrelevant for season passes
         const games = data
-          .filter(g => g.HomeTeam === abbrev || g.AwayTeam === abbrev)
+          .filter(g => g.HomeTeam === abbrev)
           .map((g, idx) => {
             const eventDate = new Date(g.DateTime || g.Day);
             const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -97,7 +98,7 @@ export const sportsdataRouter = createTRPCRouter({
               isHome,
             };
           });
-        console.log("[SD_PROXY] mapped", games.length, "games");
+        console.log("[SD_PROXY] mapped", games.length, "home games (away games discarded)");
         return { events: games, error: null };
       } catch (e: any) {
         console.error("[SD_PROXY] parse error", e);

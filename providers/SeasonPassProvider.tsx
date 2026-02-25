@@ -1978,6 +1978,25 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
     await AsyncStorage.setItem(SEASON_PASSES_KEY, JSON.stringify(passes));
   }
 
+  // migration: drop any away games that snuck into stored schedules
+  let awayTrimmed = false;
+  passes = passes.map(p => {
+    const beforeCount = p.games.length;
+    const homeOnly = (p.games || []).filter(g => g.isHome !== false);
+    if (homeOnly.length !== beforeCount) awayTrimmed = true;
+    return { ...p, games: homeOnly } as SeasonPass;
+  });
+  if (awayTrimmed) {
+    console.log('[SeasonPass] Migration: removed away games from stored schedules');
+    passes = passes.map(p => ({ ...p, games: reorderAndRenumber(p.games || []) }));
+    try {
+      await AsyncStorage.setItem(SEASON_PASSES_KEY, JSON.stringify(passes));
+      console.log('[SeasonPass] Persisted away-trimmed schedules');
+    } catch (e) {
+      console.warn('[SeasonPass] Failed to save away-trimmed passes', e);
+    }
+  }
+
   // migration: detect bundle version change and clear passes if necessary
   try {
     const storedBundle = await AsyncStorage.getItem(BUNDLE_VERSION_KEY);
