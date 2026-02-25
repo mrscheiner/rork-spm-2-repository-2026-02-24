@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useMemo, useState, useCallback } from "react";
 
 import { AppColors } from "@/constants/appColors";
+import { APP_VERSION } from "@/constants/appVersion";
 import { useSeasonPass } from "@/providers/SeasonPassProvider";
 import SeasonPassSelector from "@/components/SeasonPassSelector";
 import { NHL_TEAMS } from "@/constants/leagues";
@@ -290,6 +291,7 @@ export default function DashboardScreen() {
             <View style={styles.headerInfo}>
               <Text style={styles.teamName}>{activeSeasonPass?.teamName || 'No Team'}</Text>
               <Text style={styles.season}>{activeSeasonPass?.seasonLabel || ''} Season</Text>
+              <Text style={styles.appVersion}>{APP_VERSION}</Text>
             </View>
           </LinearGradient>
 
@@ -503,6 +505,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     color: AppColors.gold,
+  },
+  appVersion: {
+    fontSize: 10,
+    color: AppColors.textLight,
+    marginTop: 2,
   },
   statsGrid: {
     flexDirection: 'row',

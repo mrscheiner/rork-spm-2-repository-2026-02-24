@@ -1864,6 +1864,62 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
       console.warn('[SeasonPass] Failed to persist migrated season passes', e);
     }
   }
+
+  // additional migration: dedupe any duplicate preseason games (old bugs produced duplicates)
+  const dedupePreseason = (games: Game[], pass: SeasonPass): Game[] => {
+    const prefix = `ps_${pass.leagueId}_${pass.teamId}_`;
+    const seen = new Set<string>();
+    return games.filter(g => {
+      if (typeof g.id === 'string' && g.id.startsWith(prefix)) {
+        if (seen.has(g.id)) {
+          return false;
+        }
+        seen.add(g.id);
+      }
+      return true;
+    });
+  };
+  let dedupedChange = false;
+  passes = passes.map(p => {
+    const before = p.games.length;
+    const after = dedupePreseason(p.games, p).length;
+    if (after !== before) dedupedChange = true;
+    return { ...p, games: dedupePreseason(p.games, p) } as SeasonPass;
+  });
+  if (dedupedChange) {
+    console.log('[SeasonPass] Removed duplicate preseason games from storage');
+    await AsyncStorage.setItem(SEASON_PASSES_KEY, JSON.stringify(passes));
+  }
+
+  // migration: detect bundle version change and clear passes if necessary
+  try {
+    const storedBundle = await AsyncStorage.getItem(BUNDLE_VERSION_KEY);
+    if (storedBundle !== APP_VERSION) {
+      console.log('[SeasonPass] bundle version changed', storedBundle, '=>', APP_VERSION);
+      await AsyncStorage.setItem(BUNDLE_VERSION_KEY, APP_VERSION);
+      if (passes.length > 0) {
+        console.log('[SeasonPass] clearing existing passes due to bundle upgrade');
+        // inform user so they understand why their passes disappeared
+        try {
+          Alert.alert(
+            'App Updated',
+            'The application was updated. Existing season passes have been cleared so the latest schedule logic can run. Please add your pass again.',
+            [{ text: 'OK' }]
+          );
+        } catch {
+          // some environments (web) may not support Alert
+        }
+        passes = [];
+        activeId = null;
+        setNeedsSetup(true);
+        await AsyncStorage.removeItem(SEASON_PASSES_KEY);
+        await AsyncStorage.removeItem(ACTIVE_PASS_KEY);
+      }
+    }
+  } catch (e) {
+    console.warn('[SeasonPass] bundle version migration failed', e);
+  }
+
   setSeasonPasses(passes);
       setActiveSeasonPassId(activeId);
       setNeedsSetup(passes.length === 0);
