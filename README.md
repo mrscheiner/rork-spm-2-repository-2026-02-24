@@ -82,6 +82,24 @@ Run `bun start-web` to test in a web browser. Note: The browser preview is great
 
 You can test Rork apps in Expo Go or Rork iOS app. You don't need XCode or Android Studio for most features.
 
+### Sportsdata.io API key (required for schedules)
+
+The app now relies exclusively on the Sportsdata.io backend route for
+home‑game schedules. The client always calls `sportsdata.getSchedule` and the
+logic is baked into the code; you don’t need to define any `EXPO_PUBLIC_…`
+environment variable just to run the development server or scan the QR code.
+
+The **only** place the key lives is on the Cloudflare worker. Make sure the
+secret `SPORTSDATA_API_KEY` is set on the worker (see the README earlier for
+`wrangler secret put`). If the worker is missing the key it will return
+`API_KEY_MISSING` and the app will display an error message.
+
+Because the key is public and encoded into the client bundle, you can safely
+hard‑code it or commit it if you prefer, but that’s not necessary for the
+app to function.
+
+No other API keys are required; you can now safely ignore any Ticketmaster
+credentials.
 **When do you need Custom Development Builds?**
 
 - Native authentication (Face ID, Touch ID, Apple Sign In)

@@ -310,6 +310,12 @@ async function fetchScheduleViaSportsdata(pass: {
     });
     if (result && Array.isArray(result.events)) {
       console.log('[ScheduleFetch] ✅ Sportsdata proxy returned', result.events.length, 'games');
+      if (result.events.length === 0) {
+        console.warn('[ScheduleFetch] sportsdata proxy returned 0 games for', pass.leagueId, pass.teamId);
+        // Treat lack of games as an error so the caller doesn't blindly merge
+        // preseason from ESPN and display garbage.
+        return { games: [], error: 'NO_GAMES' };
+      }
       return { games: result.events, error: null };
     }
   } catch (e: any) {
@@ -468,43 +474,16 @@ async function fetchScheduleViaBackend(pass: {
   teamAbbreviation?: string;
 }): Promise<ScheduleFetchResult> {
   console.log('[ScheduleFetch] ========== COMBINED FETCH START ==========');
-  // if sportsdata key is present use that *exclusively* (no fallbacks)
-  if (process.env.EXPO_PUBLIC_SPORTSDATA_API_KEY) {
-    console.log('[ScheduleFetch] Sportsdata key configured – using Sportsdata only');
-    const sdResult = await fetchScheduleViaSportsdata(pass);
-    if (!sdResult.error && sdResult.games.length > 0) {
-      console.log('[ScheduleFetch] ✅ Sportsdata succeeded with', sdResult.games.length, 'games');
-    } else {
-      console.warn('[ScheduleFetch] Sportsdata returned', sdResult.games.length, 'games, error=', sdResult.error);
-    }
-    return sdResult;
+  // we always use the sportsdata backend now; the worker itself enforces
+  // presence of its API key and will return an appropriate error if missing.
+  console.log('[ScheduleFetch] Using Sportsdata backend exclusively');
+  const sdResult = await fetchScheduleViaSportsdata(pass);
+  if (!sdResult.error && sdResult.games.length > 0) {
+    console.log('[ScheduleFetch] ✅ Sportsdata succeeded with', sdResult.games.length, 'games');
+  } else {
+    console.warn('[ScheduleFetch] Sportsdata returned', sdResult.games.length, 'games, error=', sdResult.error);
   }
-
-  // otherwise fall back to ESPN + Ticketmaster as before
-  console.log('[ScheduleFetch] Trying ESPN first (primary source)...');
-  
-  // Try ESPN first (free, reliable)
-  const espnResult = await fetchScheduleViaESPN(pass);
-  
-  if (!espnResult.error && espnResult.games.length > 0) {
-    console.log('[ScheduleFetch] ✅ ESPN succeeded with', espnResult.games.length, 'games');
-    return espnResult;
-  }
-  
-  console.log('[ScheduleFetch] ESPN failed or returned 0 games, trying Ticketmaster as fallback...');
-  
-  // Fallback to Ticketmaster
-  const tmResult = await fetchScheduleViaTicketmaster(pass);
-  
-  if (!tmResult.error && tmResult.games.length > 0) {
-    console.log('[ScheduleFetch] ✅ Ticketmaster fallback succeeded with', tmResult.games.length, 'games');
-    return tmResult;
-  }
-  
-  console.log('[ScheduleFetch] ❌ Both ESPN and Ticketmaster failed');
-  
-  // Return ESPN error if both failed (ESPN is more likely to have useful error info)
-  return espnResult.error ? espnResult : tmResult;
+  return sdResult;
 }
 
 async function fetchScheduleWithMasterTimeout(pass: {
@@ -2657,13 +2636,18 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
       console.log('[SeasonPass] fetchScheduleForPass - Fetched', result.games.length, 'HOME games, error:', result.error);
       // ensure preseason games merged/replaced
       let gamesWithLogos = fillOpponentLogosForLeague(result.games, pass.leagueId);
-      await mergePreseasonFromESPN(gamesWithLogos, pass);
-      gamesWithLogos = reorderAndRenumber(gamesWithLogos);
+      if (!result.error && gamesWithLogos.length > 0) {
+        // only attempt to merge preseason data when we actually received some
+        // games from sportsdata; otherwise an empty array may be filled with
+        // ESPN preseason entries later, leading to incorrect "22 PS games"
+        await mergePreseasonFromESPN(gamesWithLogos, pass);
+        gamesWithLogos = reorderAndRenumber(gamesWithLogos);
+      }
       result.games = gamesWithLogos;
       
       let errorMsg: string | undefined;
       if (result.error === 'API_KEY_MISSING') {
-        errorMsg = 'Ticketmaster API key not configured.';
+        errorMsg = 'API key not configured in backend.';
       } else if (result.error === 'CORS') {
         errorMsg = 'Request blocked. Try on mobile device.';
       } else if (result.error && result.games.length === 0) {
@@ -2838,7 +2822,7 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
           success = false;
           
           if (result.error === 'API_KEY_MISSING') {
-            errorMsg = 'Ticketmaster API key not configured.';
+            errorMsg = 'API key not configured in backend.';
           } else if (result.error === 'CORS') {
             errorMsg = 'Request blocked. Try on mobile device.';
           } else if (result.error === 'TIMEOUT') {
