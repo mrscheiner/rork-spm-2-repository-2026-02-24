@@ -35,7 +35,7 @@ export const sportsdataRouter = createTRPCRouter({
       z.object({
         leagueId: z.string(),
         teamId: z.string(), // abbreviation, e.g. mil, bos
-      })
+      }).optional()
     )
     .query(async ({ input }) => {
       const key = typeof process !== "undefined" ? process.env.SPORTSDATA_API_KEY : undefined;

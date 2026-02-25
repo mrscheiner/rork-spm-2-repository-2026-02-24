@@ -151,7 +151,7 @@ async function fetchWithTimeout(url: string, ms = 15000): Promise<Response | nul
 
 export const espnRouter = createTRPCRouter({
   getTeams: publicProcedure
-    .input(z.object({ leagueId: z.string() }))
+    .input(z.object({ leagueId: z.string() }).optional())
     .query(async ({ input }) => {
         // Patch: Bypass tRPC input validation for debugging
         let patchedInput = input;
@@ -169,7 +169,7 @@ export const espnRouter = createTRPCRouter({
           console.log('[ESPN_FULL] PATCH input parse error:', e);
         }
         console.log('[ESPN_FULL] Handler invoked. Patched input:', patchedInput);
-        if (!patchedInput || typeof patchedInput !== 'object' || !patchedInput.leagueId || !('teamId' in patchedInput) || !('teamName' in patchedInput)) {
+        if (!patchedInput || typeof patchedInput !== 'object' || !patchedInput.leagueId || !patchedInput.teamId || !patchedInput.teamName) {
           return { events: [], error: 'INVALID_INPUT' };
         }
       console.log('[ESPN_PROXY] getTeams HIT - input:', JSON.stringify(input));
@@ -227,7 +227,7 @@ export const espnRouter = createTRPCRouter({
       z.object({
         leagueId: z.string(),
         espnTeamId: z.string(),
-      })
+      }).optional()
     )
     .query(async ({ input }) => {
       const leagueKey = input.leagueId === "usa.1" ? "mls" : input.leagueId.toLowerCase();
@@ -270,7 +270,7 @@ export const espnRouter = createTRPCRouter({
         teamAbbr: z.string().optional(),
         teamName: z.string().optional(),
         storedTeamId: z.string().optional(),
-      })
+      }).optional()
     )
     .query(async ({ input }) => {
       const { leagueId, teamAbbr, teamName, storedTeamId } = input;
@@ -349,7 +349,9 @@ export const espnRouter = createTRPCRouter({
       const wantedAbbr = norm(teamAbbr);
       const wantedAbbrNorm = norm(teamAbbr);
       const wantedNameNorm = norm(teamName);
+
       console.log('[ESPN_PROXY] Looking for team - abbr:', wantedAbbrNorm, 'name:', wantedNameNorm);
+
       const match =
         teams.find((t) => norm(t?.abbreviation) === wantedAbbrNorm) ||
         teams.find((t) => norm(t?.shortDisplayName) === wantedNameNorm) ||
@@ -359,7 +361,7 @@ export const espnRouter = createTRPCRouter({
         null;
 
       if (!match?.id) {
-        console.log("[ESPN Proxy] Team not found:", { wantedAbbr, wantedName: teamName });
+        console.log("[ESPN Proxy] Team not found:", { wantedAbbr, wantedName });
         console.log('[ESPN_PROXY] Available teams:', teams.slice(0, 5).map(t => ({ abbr: t.abbreviation, name: t.displayName })));
         return { espnTeamId: null, schedule: null, error: "TEAM_NOT_FOUND" };
       }
@@ -397,8 +399,7 @@ export const espnRouter = createTRPCRouter({
         teamId: z.string(),
         teamName: z.string(),
         teamAbbreviation: z.string().optional(),
-      })
-    )
+      }).optional()
     .query(async ({ input }) => {
 
       // Patch: Accept input from GET query string if undefined, bypass tRPC input validation
