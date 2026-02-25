@@ -366,7 +366,7 @@ async function fetchScheduleViaTicketmaster(pass: {
       return { games: [], error: mappedError };
     }
 
-    const games: Game[] = (result.events || []).map((ev: any) => ({
+    let games: Game[] = (result.events || []).map((ev: any) => ({
       id: ev.id,
       date: ev.date,
       month: ev.month,
@@ -380,9 +380,14 @@ async function fetchScheduleViaTicketmaster(pass: {
       gameNumber: ev.gameNumber,
       type: ev.type,
       dateTimeISO: ev.dateTimeISO,
+      // backend sets isHome flag on normalized events
+      isHome: ev.isHome !== false,
     }));
 
-    console.log('[ScheduleFetch] ✅ Ticketmaster Mapped', games.length, 'HOME games');
+    // extra safety: drop anything that the backend or later logic thinks is away
+    games = games.filter(g => g.isHome !== false);
+
+    console.log('[ScheduleFetch] ✅ Ticketmaster Mapped', games.length, 'HOME games (post-filter)');
     console.log('[ScheduleFetch] ========== TICKETMASTER FETCH SUCCESS ==========');
     return { games, error: null };
   } catch (error: any) {

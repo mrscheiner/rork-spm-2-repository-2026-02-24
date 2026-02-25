@@ -336,11 +336,19 @@ export const ticketmasterRouter = createTRPCRouter({
         return { events: [], error: "API_KEY_MISSING" };
       }
 
-      const teamConfig = TEAM_VENUE_MAP[input.teamId];
+      // try plain id first, then id+league suffix (e.g. "dal" -> "dal-nba")
+      let teamConfig = TEAM_VENUE_MAP[input.teamId];
+      if (!teamConfig && input.leagueId) {
+        const altKey = `${input.teamId}-${input.leagueId.toLowerCase()}`;
+        teamConfig = TEAM_VENUE_MAP[altKey];
+        if (teamConfig) {
+          console.log("[TM_PROXY] Using alt team config key", altKey);
+        }
+      }
       const leagueConfig = LEAGUE_SEGMENT_MAP[input.leagueId.toLowerCase()];
 
       if (!teamConfig) {
-        console.log("[TM_PROXY] No team config found for:", input.teamId);
+        console.log("[TM_PROXY] No team config found for:", input.teamId, "(league:", input.leagueId, ")");
         console.log("[TM_PROXY] Falling back to team name search:", input.teamName);
       }
 
@@ -418,7 +426,7 @@ export const ticketmasterRouter = createTRPCRouter({
           }
           
           // Check if event name suggests it's a home game ("Team vs" pattern)
-          if (eventName.includes(teamFirstWord + " vs") || eventName.startsWith(teamFirstWord)) {
+          if (eventName.includes(teamFirstWord + " vs")) {
             return true;
           }
           
@@ -478,6 +486,7 @@ export const ticketmasterRouter = createTRPCRouter({
             venueName: venueName || undefined,
             time: eventDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
             ticketStatus: "Available",
+            isHome: true,
             isPaid: false,
             gameNumber: idx + 1,
             type: gameType,
