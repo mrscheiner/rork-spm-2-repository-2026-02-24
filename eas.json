@@ -1,11 +1,11 @@
 {
   "cli": {
     "version": ">= 16.32.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "packageManager": "npm"
   },
   "build": {
     "development": {
-      "packageManager": "npm",
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
@@ -13,7 +13,6 @@
       }
     },
     "preview": {
-      "packageManager": "npm",
       "distribution": "internal",
       "autoIncrement": true,
       "ios": {
@@ -21,7 +20,6 @@
       }
     },
     "production": {
-      "packageManager": "npm",
       "autoIncrement": true,
       "ios": {
         "simulator": false
