@@ -19,13 +19,23 @@ const BACKUP_VERSION = '1.0';
 
 async function withMasterTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  
+
   const timeoutPromise = new Promise<T>((resolve) => {
     timeoutId = setTimeout(() => {
       console.log('[MasterTimeout] Operation timed out after', ms, 'ms - returning fallback');
       resolve(fallback);
     }, ms);
   });
+
+  // race the real promise against the timeout fallback
+  try {
+    const result = await Promise.race([promise, timeoutPromise]) as T;
+    return result;
+  } finally {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 // helpers for direct ESPN site API fetching (avoid tRPC client and return only home games)
@@ -2134,15 +2144,19 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
     } else {
       try {
         console.log('[CreatePass] Fetching schedule via backend proxy...');
-        const result = await fetchScheduleWithMasterTimeout({
+        let result = await fetchScheduleWithMasterTimeout({
           leagueId: league.id,
           teamId: team.id,
           teamName: team.name,
           teamAbbreviation: team.abbreviation,
         });
-  games = result.games;
-  // Try to populate opponent logos immediately for fetched schedules
-  games = fillOpponentLogosForLeague(games, league.id);
+        if (!result || !Array.isArray(result.games)) {
+          console.warn('[CreatePass] schedule fetch returned invalid result:', result);
+          result = { games: [], error: 'UNKNOWN' } as any;
+        }
+        games = result.games;
+        // Try to populate opponent logos immediately for fetched schedules
+        games = fillOpponentLogosForLeague(games, league.id);
         
         if (result.error && games.length === 0) {
           if (result.error === 'NETWORK') {
@@ -2443,12 +2457,16 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
         return { games: PANTHERS_20252026_SCHEDULE };
       }
       
-      const result = await fetchScheduleWithMasterTimeout({
+      let result = await fetchScheduleWithMasterTimeout({
         leagueId: pass.leagueId,
         teamId: pass.teamId,
         teamName: pass.teamName,
         teamAbbreviation: pass.teamAbbreviation,
       });
+      if (!result || !Array.isArray(result.games)) {
+        console.warn('[SeasonPass] fetchScheduleForPass returned invalid result:', result);
+        result = { games: [], error: 'UNKNOWN' } as any;
+      }
 
       console.log('[SeasonPass] fetchScheduleForPass - Fetched', result.games.length, 'HOME games, error:', result.error);
       
@@ -2545,12 +2563,15 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
         success = true;
       } else {
         console.log('[Resync] Fetching schedule via Ticketmaster...');
-        const result = await fetchScheduleWithMasterTimeout({
+        let result = await fetchScheduleWithMasterTimeout({
           leagueId: pass.leagueId,
           teamId: pass.teamId,
           teamName: pass.teamName,
           teamAbbreviation: pass.teamAbbreviation,
         });
+        if (!result || !Array.isArray(result.games)) {
+          throw new Error('fetchScheduleWithMasterTimeout returned invalid result: ' + JSON.stringify(result));
+        }
         
         console.log('[Resync] Fetch result - games:', result.games.length, 'error:', result.error);
         
