@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Modal, ScrollView, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronDown, Plus, Check, Pencil, Trash2 } from 'lucide-react-native';
@@ -11,6 +11,11 @@ import { getTeamTheme } from '@/constants/teamThemes';
 export default function SeasonPassSelector() {
   const router = useRouter();
   const { seasonPasses, activeSeasonPass, switchSeasonPass, deleteSeasonPass } = useSeasonPass();
+
+  // version marker helps detect stale JS bundle
+  useEffect(() => {
+    console.log('[Selector] SeasonPassSelector v2 rendered, passes count:', seasonPasses.length);
+  }, [seasonPasses.length]);
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSelect = useCallback(async (passId: string) => {
