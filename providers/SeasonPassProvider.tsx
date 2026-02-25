@@ -305,6 +305,39 @@ async function fetchScheduleViaBackend(pass: {
   // attempt below, so declare it outside the try block and populate inside.
   let seasonCode = '';
 
+  // helper: add preseason games returned by ESPN to the mapped array.  we
+  // intentionally fetch these even if the unified backend succeeded because
+  // sportsdata.io never returns preseason and we want the client to see PS1,
+  // PS2 entries for every team (same style as the hard‑coded Florida Panthers
+  // schedule constant used during development).
+  const mergePreseasonFromESPN = async (arr: Game[]) => {
+    try {
+      const espnResult = await fetchScheduleViaESPN(pass);
+      if (espnResult && espnResult.games && espnResult.games.length > 0) {
+        const preseason = espnResult.games.filter(g => g.type === 'Preseason');
+        if (preseason.length) {
+          console.log('[ScheduleFetch] Merging', preseason.length, 'preseason games from ESPN');
+
+          // dedupe by original id
+          const ids = new Set(arr.map(g => g.id));
+          let psCount = 0;
+          // sort preseason by date so numbering is chronological
+          preseason.sort((a,b)=> new Date(a.dateTimeISO).getTime() - new Date(b.dateTimeISO).getTime());
+          for (const g of preseason) {
+            if (ids.has(g.id)) continue;
+            psCount += 1;
+            // mutate fields to match PS style
+            g.id = `ps_${pass.leagueId}_${pass.teamId}_${psCount}`;
+            g.gameNumber = `PS ${psCount}`;
+            arr.unshift(g); // put before regular games
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[ScheduleFetch] failed to merge preseason from ESPN', e);
+    }
+  };
+
   // first try unified backend schedule endpoint
   // primary attempt: local/dev backend (IP or env var)
   try {
@@ -350,8 +383,26 @@ async function fetchScheduleViaBackend(pass: {
     if (resp.ok) {
       const data = await resp.json();
       if (data.games && data.games.length > 0) {
-        const mapped = data.games.map((g: any) => mapSportsDataGame(g));
+        let mapped: Game[] = data.games.map((g: any) => mapSportsDataGame(g));
         console.log(`[ScheduleFetch] ✅ Unified backend succeeded with ${mapped.length} games (raw ${data.games.length})`);
+        // always merge preseason games (might add PS1/PS2 entries)
+        await mergePreseasonFromESPN(mapped);
+        // sort: preseason first (retain original date order), then regular/playoff
+        mapped.sort((a,b)=>{
+          if (a.type !== b.type) {
+            if (a.type === 'Preseason') return -1;
+            if (b.type === 'Preseason') return 1;
+          }
+          return new Date(a.dateTimeISO).getTime() - new Date(b.dateTimeISO).getTime();
+        });
+        // after merging, recompute numeric gameNumber for regular games
+        let regIndex = 0;
+        mapped.forEach(g => {
+          if (g.type === 'Regular' || g.type === 'Playoff') {
+            regIndex += 1;
+            g.gameNumber = String(regIndex);
+          }
+        });
         return { games: mapped, error: null, url };
       } else {
         console.log('[ScheduleFetch] Unified backend returned zero games');
@@ -372,8 +423,23 @@ async function fetchScheduleViaBackend(pass: {
     if (resp2.ok) {
       const data2 = await resp2.json();
       if (data2.games && data2.games.length > 0) {
-        const mapped2 = data2.games.map((g: any) => mapSportsDataGame(g));
+        let mapped2: Game[] = data2.games.map((g: any) => mapSportsDataGame(g));
         console.log('[ScheduleFetch] ✅ Remote backend succeeded with', mapped2.length, 'games (raw', data2.games.length, ')');
+        await mergePreseasonFromESPN(mapped2);
+        mapped2.sort((a,b)=>{
+          if (a.type !== b.type) {
+            if (a.type === 'Preseason') return -1;
+            if (b.type === 'Preseason') return 1;
+          }
+          return new Date(a.dateTimeISO).getTime() - new Date(b.dateTimeISO).getTime();
+        });
+        let regIndex2 = 0;
+        mapped2.forEach(g => {
+          if (g.type === 'Regular' || g.type === 'Playoff') {
+            regIndex2 += 1;
+            g.gameNumber = String(regIndex2);
+          }
+        });
         return { games: mapped2, error: null, url: remoteUrl };
       }
       console.log('[ScheduleFetch] Remote backend returned zero games');
