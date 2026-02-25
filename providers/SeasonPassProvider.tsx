@@ -302,22 +302,34 @@ async function fetchScheduleViaSportsdata(pass: {
   teamName: string;
   teamAbbreviation?: string;
 }): Promise<ScheduleFetchResult> {
-  // ask backend proxy
+  // Use a manual POST request to the tRPC endpoint rather than relying on
+  // the client-generated GET.  GETs have repeatedly mangled the input when
+  // devices or tRPC themselves encode it, leading to INVALID_INPUT results.
+  // The worker already understands POST and we bypass the whole patching
+  // logic by sending a proper JSON body.
   try {
-    const result = await trpcClient.sportsdata.getSchedule.query({
-      leagueId: pass.leagueId,
-      teamId: pass.teamId,
+    const url = '/api/trpc/sportsdata.getSchedule';
+    console.log('[ScheduleFetch] POSTing to sportsdata proxy', url, pass.leagueId, pass.teamId);
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: { leagueId: pass.leagueId, teamId: pass.teamId } }),
     });
+    if (!resp.ok) {
+      console.warn('[ScheduleFetch] sportsdata proxy HTTP error', resp.status);
+      return { games: [], error: 'NETWORK' };
+    }
+    const json = await resp.json();
+    const result = json?.result?.data?.json;
     if (result && Array.isArray(result.events)) {
       console.log('[ScheduleFetch] ✅ Sportsdata proxy returned', result.events.length, 'games');
       if (result.events.length === 0) {
         console.warn('[ScheduleFetch] sportsdata proxy returned 0 games for', pass.leagueId, pass.teamId);
-        // Treat lack of games as an error so the caller doesn't blindly merge
-        // preseason from ESPN and display garbage.
         return { games: [], error: 'NO_GAMES' };
       }
       return { games: result.events, error: null };
     }
+    console.warn('[ScheduleFetch] sportsdata proxy returned unexpected response', json);
   } catch (e: any) {
     console.warn('[ScheduleFetch] sportsdata proxy error', e?.message || e);
   }
