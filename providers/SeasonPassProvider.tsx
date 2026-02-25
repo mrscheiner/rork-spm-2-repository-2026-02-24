@@ -382,9 +382,8 @@ async function mergePreseasonFromESPN(arr: Game[], pass: {
       const preseason = espnResult.games.filter(g => g.type === 'Preseason' && (g as any).isHome !== false);
       if (preseason.length) {
         console.log('[ScheduleFetch] Merging', preseason.length, 'preseason games from ESPN');
-        // helper to compute a dedupe key (opponent + date/time)
-        // use dateTimeISO as the unique key since duplicates always share the same timestamp
-        const keyFor = (g: Game) => `${g.dateTimeISO || g.date}`;
+        // helper to compute a dedupe key using visible month/day/time (ignores TZ offsets)
+        const keyFor = (g: Game) => `${g.month || ''}-${g.day || ''}-${g.time || ''}`;
         const existingKeys = new Set(arr.map(keyFor));
 
         // count existing ps entries so we can continue numbering
@@ -1896,7 +1895,8 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
     const prefix = `ps_${pass.leagueId}_${pass.teamId}_`;
     const seenIds = new Set<string>();
     const seenKeys = new Set<string>();
-    const keyFor = (g: Game) => `${g.dateTimeISO || g.date}`;
+    // key uses visible month/day/time to avoid TZ mismatches
+    const keyFor = (g: Game) => `${g.month || ''}-${g.day || ''}-${g.time || ''}`;
     return games.filter(g => {
       // remove exact id duplicates
       if (typeof g.id === 'string' && g.id.startsWith(prefix)) {
@@ -1908,6 +1908,9 @@ export const [SeasonPassProvider, useSeasonPass] = createContextHook(() => {
       // also drop duplicates if another game has same datetime
       const k = keyFor(g);
       if (seenKeys.has(k)) {
+        if (__DEV__) {
+          try { Alert.alert('Debug', `migrated removed duplicate at ${k}`); } catch {}
+        }
         return false;
       }
       seenKeys.add(k);
