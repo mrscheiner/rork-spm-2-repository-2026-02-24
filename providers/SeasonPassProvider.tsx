@@ -374,19 +374,28 @@ async function mergePreseasonFromESPN(arr: Game[], pass: {
   try {
     const espnResult = await fetchScheduleViaESPN(pass);
     if (espnResult && espnResult.games && espnResult.games.length > 0) {
+      // only keep home preseason games (isHome may be undefined for home)
       const preseason = espnResult.games.filter(g => g.type === 'Preseason' && (g as any).isHome !== false);
       if (preseason.length) {
         console.log('[ScheduleFetch] Merging', preseason.length, 'preseason games from ESPN');
         const ids = new Set(arr.map(g => g.id));
-        let psCount = 0;
+        // count existing ps entries so we can continue numbering
+        const prefix = `ps_${pass.leagueId}_${pass.teamId}_`;
+        let existingCount = arr.filter(g => typeof g.id === 'string' && g.id.startsWith(prefix)).length;
+        let psCount = existingCount;
+        // sort by date to keep chronological order when inserting
         preseason.sort((a,b)=> new Date(a.dateTimeISO).getTime() - new Date(b.dateTimeISO).getTime());
         for (const g of preseason) {
-          if (ids.has(g.id)) continue;
+          // stable id based on original ESPN id
+          const stableId = `${prefix}${g.id}`;
+          if (ids.has(stableId)) continue;
           psCount += 1;
-          g.id = `ps_${pass.leagueId}_${pass.teamId}_${psCount}`;
+          g.id = stableId;
           g.gameNumber = `PS ${psCount}`;
           arr.unshift(g);
         }
+        // after merging, sort full array by date/time to maintain order across types
+        arr.sort((a,b) => new Date(a.dateTimeISO).getTime() - new Date(b.dateTimeISO).getTime());
       }
     }
   } catch (e) {
